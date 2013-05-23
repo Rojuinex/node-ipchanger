@@ -1,10 +1,14 @@
-http    = require 'http'
-proxy   = require 'http-proxy'
-nodeTor = require '../node_modules/node-Tor/lib/node-tor.js'
-qs      = require 'querystring'
-jsdom   = require 'jsdom'
-util    = require 'util'
+http     = require 'http'
+proxy    = require 'http-proxy'
+nodeTor  = require '../node_modules/node-Tor/lib/node-tor.js'
+qs       = require 'querystring'
+jsdom    = require 'jsdom'
+util     = require 'util'
+mongoose = require 'mongoose' 
 
+mongoose.connect 'mongodb://localhost/ipchanger'
+
+ProxyServer = mongoose.model 'ProxyServer', {'Last-Update':String, 'ipaddress':String, 'port':String,'country':String}
 
 getServers = (body, req, res)->
 	jsdom.env 
