@@ -1,1 +1,1 @@
-coffee -wc -o ./lib ./src/*
+coffee --bare -wc -o ./lib ./src
