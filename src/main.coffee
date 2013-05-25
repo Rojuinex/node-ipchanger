@@ -44,9 +44,10 @@ db.once 'open', ()->
 
 	hideMyAssGrabber.setup ProxyServer, db, mongoose
 	hideMyAssGrabber.update()
-	#                                      One hour (1000 ms in one sec, 60 sec in one min, 60 min in one hour)
-	hideMyAssGrabber.setUpdateInterval (1000 * 60 * 60) * .083
-
+	# One hour (1000 ms in one sec, 60 sec in one min, 60 min in one hour)
+	#                                 ms to hr constant * hours
+	hideMyAssGrabber.setUpdateInterval( (1000 * 60 * 60) * 6 )
+	hideMyAssGrabber.autoUpdate true
 
 	startServer()
 
@@ -56,13 +57,14 @@ server = http.createServer (req,res)->
 
 	req.on 'end', ()->
 		res.writeHead 200, "Content-Type":"text/plain"
-		res.write "Current proxy grabbers: \n\tHide My Ass\thidemyass.com\tLast Updated: #{hideMyAssGrabber.lastUpdated()}\n"
+		res.write "Current proxy grabbers: \n\tHide My Ass\tDomain: hidemyass.com\tLast Updated: #{hideMyAssGrabber.lastUpdated()}\tNext Update: #{hideMyAssGrabber.nextUpdate()}\n"
 
-		res.write "Servers in database: "
+		res.write "\nServers in database: \n"
  
 		ProxyServer.find (err, servers)->
 			res.write util.inspect servers
 			res.end "****************************************\n          No More Proxy Servers\n****************************************\n"
 
 startServer = ()->
+	logX bgGreen + black, "\t\t\t\t\t\t\tStarting Server\t\t\t\t\t\t\t"
 	server.listen 8088

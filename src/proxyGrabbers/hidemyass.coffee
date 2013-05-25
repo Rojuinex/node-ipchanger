@@ -15,7 +15,9 @@ ProxyServer = null
 db          = null
 mongoose    = null
 
-updatedTime = "NEVER"
+updatedTime        = "NEVER"
+autoUpdateInterval = 0
+autoUpdateHandle   = null
 
 exports.setup = (_ProxyServer, _db, _mongoose)->
 	ProxyServer = _ProxyServer
@@ -25,12 +27,35 @@ exports.setup = (_ProxyServer, _db, _mongoose)->
 exports.lastUpdated = ()->
 	return updatedTime
 
-exports.setUpdateInterval = (ms)->
-	return if !ms?
+exports.nextUpdate = ()->
+	if autoUpdateHandle is null
+		return "NEVER"
 
-	setInterval ()->
-		update()
-	, ms
+	if updatedTime is "NEVER"
+		return "Sometime in the next " + autoUpdateInterval + " ms" 
+	else
+		return new Date(updatedTime.getTime() + autoUpdateInterval)
+
+exports.setUpdateInterval = (ms)->
+	return if !ms? or typeof ms != "number"
+
+	autoUpdateInterval = ms
+
+	if autoUpdateHandle != null
+		autoUpdate true
+
+exports.autoUpdate = (turnOn)->
+	if turnOn
+		if autoUpdateHandle != null
+			clearInterval autoUpdateHandle
+
+		autoUpdateHandle = setInterval ()->
+			update()
+		, autoUpdateInterval
+	else
+		if autoUpdateHandle != null
+			clearInterval autoUpdateHandle
+			autoUpdateHandle = null
 
 getServers = (body, cb)->
 	jsdom.env 
@@ -173,9 +198,10 @@ searchOptions = qs.stringify
 	# End of Post Body Options
 
 exports.update = update = (cb)->
-
+	console.log strX yellow, "Grabing info from Hide My Ass..."
 	options = new Options "/proxy-list/", searchOptions
 
+	console.log strX yellow, "\tSending first request"
 	req = http.request options, (res)->
 		body = ''
 
@@ -183,12 +209,13 @@ exports.update = update = (cb)->
 			body += data
 
 		res.on 'end', ()->
+			console.log strX yellow, "\tFirst response recieved\n\tSending second request"
 			postData2 = "q=378"
 
 			options2 = new Options res.headers['location'], postData2
 
 			if res.statusCode != 200 and res.statusCode != 302
-				console.log strX red, "First Status code was " + res.statusCode
+				console.log strX red, "\tFirst Status code was " + res.statusCode
 				return
 
 			req2 = http.request options2, (res2)->
@@ -198,8 +225,9 @@ exports.update = update = (cb)->
 					body2 += data
 
 				res2.on 'end', ()->
+					console.log strX yellow, "\tSecond response recieved"
 					if res2.statusCode != 200
-						console.log strX red, "Second Status code was " + res2.statusCode
+						console.log strX red, "\tSecond Status code was " + res2.statusCode
 						return
 
 					getServers body2, cb
