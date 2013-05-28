@@ -8,7 +8,8 @@ for prop of colors
 	eval prop + ' = colors[prop]'
 
 process.on 'uncaughtException', (err)->
-	logX red, err
+	console.error red + "" + new Date()
+	console.error err.stack + reset
 
 
 http             = require 'http'
@@ -28,7 +29,7 @@ mongoose.connect 'mongodb://localhost/ipchanger'
 
 db = mongoose.connection
 
-db.on 'error', console.error.bind(console, 'connection error:')
+db.on 'error', console.error.bind(console, new Date() + '\nconnection error:')
 
 ProxyServer = null
 
@@ -111,36 +112,90 @@ server = http.createServer (req,res)->
 				if _i is _len
 					res.end "****************************************\n          No More Proxy Servers\n****************************************\n"
 
-updateProxy = (cb)->
-	findNext = ()->
-		ProxyServer.find().sort("speed").exec (err, servers)->
-			logX red, err if err
-			if servers is null or servers.length <= 0
-				setTimeout(findNext, 1000)
+updating = false
+updateProxy = ()->
+	return if updating
+	updating = true
+	foundProxy = false
+	checkProxy = (server,cb)->
+		timeOutFunction = null
+		proxySocket = new net.Socket()
+		connected = false
 
-			for server in servers
-				if currentProxy != null and server.ipaddress is currentProxy.ipaddress
-					continue
+		proxySocket.connect server.port, server.ipaddress, ()->
+			connected = true
 
-				logX blue, "\ntrying server #{server.ipaddress}:#{server.port}" if config.loglevel.verbose
-				if server["last-duration"] < config['max-time'] or server["last-used"].getTime() < Date.now() - config['reset-time']
-					# TODO: Check to see if the proxy server is up
-					
+		proxySocket.on 'error', (e)->
+			if e.code is "ECONNREFUSED"
+				server['last-duration'] = config['max-time']
+				server['last-used'] = Date.now()
+				server.save (err)->
+					console.error red + err + reset if err
+				logX ltYellow, "Server #{server.ipaddress}:#{server.port} not active!"
+				if !connected and !foundProxy
+					cb false
+			else
+				console.error red + " " + e.stack + reset
+
+		proxySocket.on 'connect', ()->
+			logX blue, "connected to proxy #{server.ipaddress}:#{server.port}" if config.loglevel.verbose
+			connected = true
+			foundProxy = true
+			cb true
+			if timeOutFunction != null
+				clearTimeout timeOutFunction
+			proxySocket.end()
+
+		timeOutFunction = setTimeout ()->
+			if !connected
+				proxySocket.end()
+				cb false
+		, 5000
+
+	index = 0
+
+	findNext = (servers)->
+		return if foundProxy
+		len = servers.len
+		if index is len
+			index = 0
+
+		server = servers[index++]
+
+		if currentProxy != null and server.ipaddress is currentProxy.ipaddress
+			return findNext servers, index
+
+		logX blue, "\ntrying server #{server.ipaddress}:#{server.port}" if config.loglevel.verbose
+		if server["last-duration"] < config['max-time'] or server["last-used"].getTime() < Date.now() - config['reset-time']
+			# TODO: Check to see if the proxy server is up
+
+			checkProxy server,(active)->
+				if active
 					logX ltYellow, "Now using proxy server #{server.ipaddress} on port #{server.port} with speed #{server.speed}!"
 					logX blue, "Selected because last duration " + (server["last-duration"] < config['max-time']) + " Reset Time passed " + (server["last-used"].getTime() < Date.now() - config['reset-time']) if config.loglevel.verbose
 					logX blue, "\tLast Duration #{server['last-duration']}\n\tLast Used #{server["last-used"].getTime()}"
 
 					lastChange = new Date()
 					currentProxy = server
-
-					if cb != null and typeof cb is "function"
-						cb()
-					return
+					updating = false
 				else
-					logX blue, "server #{server.ipaddress}:#{server.port} disqualified because" if config.loglevel.verbose
-					logX(blue, "\tLast Duration (#{server['last-duration']}) > Max Time (#{config['max-time']})") if server["last-duration"] >= config['max-time'] and config.loglevel.verbose
-					logX(blue, "\tLast Used (#{server['last-used'].getTime()}) > Now (#{Date.now()}) - reset time (#{config['reset-time']})") if server["last-used"].getTime() >= Date.now() - config['reset-time'] and config.loglevel.verbose
-					console.log ""
+					findNext servers
+				
+
+		else
+			logX blue, "server #{server.ipaddress}:#{server.port} disqualified because" if config.loglevel.verbose
+			logX(blue, "\tLast Duration (#{server['last-duration']}) > Max Time (#{config['max-time']})") if server["last-duration"] >= config['max-time'] and config.loglevel.verbose
+			logX(blue, "\tLast Used (#{server['last-used'].getTime()}) > Now (#{Date.now()}) - reset time (#{config['reset-time']})") if server["last-used"].getTime() >= Date.now() - config['reset-time'] and config.loglevel.verbose
+			console.log ""
+			findNext servers
+
+	getServers = ()->
+		ProxyServer.find().sort("speed").exec (err, servers)->
+			logX red, err if err
+			if servers is null or servers.length <= 0
+				setTimeout getServers, 1000
+			else
+				findNext servers
 
 	if currentProxy != null and lastChange != null
 		currentProxy["last-used"] = lastChange
@@ -149,10 +204,9 @@ updateProxy = (cb)->
 		currentProxy["last-duration"] = config["max-time"]
 		currentProxy.save (err)->
 			console.error err if err
-			logX(blue,"Saved #{currentProxy.ipaddress} ") if config.loglevel.verbose
-			findNext()
+			getServers()
 	else
-		findNext()
+		getServers()
 
 
 startServer = ()->
@@ -164,44 +218,35 @@ startServer = ()->
 	forwardServer = net.createServer (clientSocket)->
 		connected = false
 		changing = false
-		connectionReset = false
 		buffers = new Array()
 		proxySocket = new net.Socket()
 
-		connect = ()->
-			proxySocket = new net.Socket()
-			proxySocket.connect currentProxy.port, currentProxy.ipaddress, ()->
-				connected = true
-				changing = false
-				connectionReset = false
-				if buffers.length > 0
-					for buffer in buffers
-						proxySocket.write buffer
-
-		connect()
-
+		proxySocket.connect currentProxy.port, currentProxy.ipaddress, ()->
+			connected = true
+			changing = false
+			if buffers.length > 0
+				for buffer in buffers
+					proxySocket.write buffer
 
 		clientSocket.on 'error', (e)->
-			console.log red + "client socekt error"
+			console.error red + "client socekt error"
+			console.error new Date()
 			console.error e
-			console.log reset
+			console.error reset
 			proxySocket.end()
 
 		proxySocket.on 'error', (e)->
-			logX bgRed + ltYellow, e.code
 			if e.code is "ECONNREFUSED"
-				connectionReset = true
-				console.log red + "Connection Refused... trying new server"
-				console.error e
-				console.log reset
+				logX red + "Connection Refused... trying new server"
 				if !changing
 					changing = true
-					updateProxy connect()
-			else
-				console.log red + "proxy socket error"
-				console.error e
-				console.log reset
-				clientSocket.end()
+					updateProxy()
+			
+			console.error red + "proxy socket error"
+			console.error new Date()
+			console.error e
+			console.error reset
+			clientSocket.end()
 
 		proxySocket.on 'data', (data)->
 			clientSocket.write data
@@ -213,16 +258,16 @@ startServer = ()->
 			clientSocket.end()
 
 		clientSocket.on 'data', (data)->
-			buffers[buffers.length] = data
 			if connected
 				proxySocket.write data
+			else
+				buffers[buffers.length] = data
 
 		clientSocket.on 'close', (did_error)->
 			proxySocket.end()
 
 		proxySocket.on 'close', (did_error)->
-			if !connectionReset
-				clientSocket.end()
+			clientSocket.end()
 	# End of proxy connection handler
 
 
