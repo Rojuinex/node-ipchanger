@@ -235,7 +235,6 @@ startProxyServer = ()->
 	forwardServer = net.createServer (clientSocket)->
 		connected   = false
 		changing    = false
-		endClient   = false
 		buffers     = new Array()
 		proxySocket = new net.Socket()
 
@@ -260,9 +259,7 @@ startProxyServer = ()->
 				if !changing
 					changing = true
 					updateProxy()
-
-				endClient = true
-			
+			###
 			else if e.code is "ECONNRESET"
 				connected = false
 				connResetCounter++
@@ -278,8 +275,7 @@ startProxyServer = ()->
 						if buffers.length > 0
 							for buffer in buffers
 								proxySocket.write buffer
-			else
-				endClient = true
+			###
 
 			console.error red + "proxy socket error"
 			console.error new Date()
@@ -298,8 +294,7 @@ startProxyServer = ()->
 			proxySocket.end()
 
 		proxySocket.on 'close', (did_error)->
-			if endClient
-				clientSocket.end()
+			clientSocket.end()
 	# End of proxy connection handler
 
 
