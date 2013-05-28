@@ -164,6 +164,7 @@ startServer = ()->
 	forwardServer = net.createServer (clientSocket)->
 		connected = false
 		changing = false
+		connectionReset = false
 		buffers = new Array()
 		proxySocket = new net.Socket()
 
@@ -172,6 +173,7 @@ startServer = ()->
 			proxySocket.connect currentProxy.port, currentProxy.ipaddress, ()->
 				connected = true
 				changing = false
+				connectionReset = false
 				if buffers.length > 0
 					for buffer in buffers
 						proxySocket.write buffer
@@ -188,6 +190,7 @@ startServer = ()->
 		proxySocket.on 'error', (e)->
 			logX bgRed + ltYellow, e.code
 			if e.code is "ECONNREFUSED"
+				connectionReset = true
 				console.log red + "Connection Refused... trying new server"
 				console.error e
 				console.log reset
@@ -218,7 +221,8 @@ startServer = ()->
 			proxySocket.end()
 
 		proxySocket.on 'close', (did_error)->
-			clientSocket.end()
+			if !connectionReset
+				clientSocket.end()
 	# End of proxy connection handler
 
 
