@@ -1,2 +1,1 @@
-A node.js proxy server that uses tor to change your external ip address.
-
+A rotating proxy server that changes the proxy it uses at regular intervals
