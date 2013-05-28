@@ -12,18 +12,19 @@ process.on 'uncaughtException', (err)->
 	console.error err.stack + reset
 
 
-http             = require 'http'
-qs               = require 'querystring'
-jsdom            = require 'jsdom'
-util             = require 'util'
-mongoose         = require 'mongoose' 
-hideMyAssGrabber = require './proxyGrabbers/hidemyass'
-config           = require '../config.json'
-net              = require 'net'
-util             = require 'util'
+http               = require 'http'
+qs                 = require 'querystring'
+jsdom              = require 'jsdom'
+util               = require 'util'
+mongoose           = require 'mongoose' 
+hideMyAssGrabber   = require './proxyGrabbers/hidemyass'
+config             = require '../config.json'
+net                = require 'net'
+util               = require 'util'
 
-lastChange       = null
-currentProxy     = null
+lastChange         = null
+currentProxy       = null
+proxyServerStarted = false
 
 mongoose.connect 'mongodb://localhost/ipchanger'
 
@@ -69,54 +70,24 @@ setupGrabbers = ()->
 	#                                 ms to hr constant * hours
 	#hideMyAssGrabber.setUpdateInterval( config.updateInterval )
 	#hideMyAssGrabber.autoUpdate true
-	hideMyAssGrabber.update()
+	hideMyAssGrabber.update updateProxy
 
 
 db.once 'open', ()->
 	setupDatabase ()->
-		setupGrabbers()
-		updateProxy()
 		startServer()
+		setupGrabbers()
+		
 
-
-
-server = http.createServer (req,res)->
-	req.on 'data', (data)->
-
-	req.on 'end', ()->
-		res.writeHead 200, "Content-Type":"text/plain"
-		res.write "Current proxy grabbers: \n\tHide My Ass\tDomain: hidemyass.com\tLast Updated: #{hideMyAssGrabber.lastUpdated()}\tNext Update: #{hideMyAssGrabber.nextUpdate()}\n"
-
-		res.write "\nServers in database: \n"
- 
-		ProxyServer.find (err, servers)->
-			for server in servers
-				if _i > 0
-					res.write '\n\n'
-
-				res.write 'Server ' + _i
-
-				res.write '\n\t' + 'Last-Update     ' + server['Last-Update']
-				res.write '\n\t' + 'ipaddress       ' + server['ipaddress']
-				res.write '\n\t' + 'port            ' + server['port']
-				res.write '\n\t' + 'country         ' + server['country']
-				res.write '\n\t' + 'speed           ' + server['speed']
-				res.write '\n\t' + 'connectionTime  ' + server['connectionTime']
-				res.write '\n\t' + 'ping            ' + server['ping']
-				res.write '\n\t' + 'from            ' + server['from']
-				res.write '\n\t' + 'type            ' + server['type']
-				res.write '\n\t' + 'annon           ' + server['annon']
-				res.write '\n\t' + 'last-used       ' + server['last-used']
-				res.write '\n\t' + 'last-duration  ' + server['last-duration'] 
-
-				if _i is _len
-					res.end "****************************************\n          No More Proxy Servers\n****************************************\n"
 
 updating = false
 updateProxy = ()->
 	return if updating
 	updating = true
 	foundProxy = false
+
+	logX bgBlue + ltYellow, "Updating proxy...\t" + new Date()
+
 	checkProxy = (server,cb)->
 		timeOutFunction = null
 		proxySocket = new net.Socket()
@@ -178,6 +149,8 @@ updateProxy = ()->
 					lastChange = new Date()
 					currentProxy = server
 					updating = false
+					if !proxyServerStarted
+						startProxyServer()
 				else
 					findNext servers
 				
@@ -209,12 +182,54 @@ updateProxy = ()->
 		getServers()
 
 
+
+httpServer = http.createServer (req,res)->
+	req.on 'data', (data)->
+
+	req.on 'end', ()->
+		res.writeHead 200, "Content-Type":"text/plain"
+		res.write "Proxy server running #{proxyServerStarted}\n"
+		res.write "\ton port#{config['proxy-port']}\n" if proxyServerStarted
+		res.write "Current proxy grabbers: \n\tHide My Ass\tDomain: hidemyass.com\tLast Updated: #{hideMyAssGrabber.lastUpdated()}\tNext Update: #{hideMyAssGrabber.nextUpdate()}\n"
+
+		res.write "\nServers in database: \n"
+ 
+		ProxyServer.find (err, servers)->
+			for server in servers
+				if _i > 0
+					res.write '\n\n'
+
+				res.write 'Server ' + _i
+
+				res.write '\n\t' + 'Last-Update     ' + server['Last-Update']
+				res.write '\n\t' + 'ipaddress       ' + server['ipaddress']
+				res.write '\n\t' + 'port            ' + server['port']
+				res.write '\n\t' + 'country         ' + server['country']
+				res.write '\n\t' + 'speed           ' + server['speed']
+				res.write '\n\t' + 'connectionTime  ' + server['connectionTime']
+				res.write '\n\t' + 'ping            ' + server['ping']
+				res.write '\n\t' + 'from            ' + server['from']
+				res.write '\n\t' + 'type            ' + server['type']
+				res.write '\n\t' + 'annon           ' + server['annon']
+				res.write '\n\t' + 'last-used       ' + server['last-used']
+				res.write '\n\t' + 'last-duration  ' + server['last-duration'] 
+
+				if _i is _len
+					res.end "****************************************\n          No More Proxy Servers\n****************************************\n"
+
+
 startServer = ()->
-	logX bgGreen + black, "\t\t\t\t\t\t\tStarting Server\t\t\t\t\t\t\t"
-	logX ltGreen, "Running on port #{config['http-port']}\n"
-	server.listen config['http-port']
+	logX bgGreen + black, "\t\t\t\t\t\tStarting Web Server\t\t\t\t\t\t\t"
+	logX bgGreen + black, "\t\t\t\t\t#{new Date()}\t\t\t\t\t\t"
+	logX ltGreen, "Web server running on port #{config['http-port']}\n"
+	httpServer.listen config['http-port']
 
 
+
+startProxyServer = ()->
+	logX bgGreen + black, "\t\t\t\t\t\tStarting Proxy Server\t\t\t\t\t\t\t"
+	logX bgGreen + black, "\t\t\t\t\t#{new Date()}\t\t\t\t\t\t"
+	proxyServerStarted = true
 	forwardServer = net.createServer (clientSocket)->
 		connected = false
 		changing = false
@@ -272,7 +287,7 @@ startServer = ()->
 
 
 	forwardServer.listen config['proxy-port'], ()->
-		logX bgGreen + black, "Forward server bound on port " + config['proxy-port']
+		logX ltGreen, "Proxy server bound on port " + config['proxy-port']
 
 	setInterval ()->
 		hideMyAssGrabber.update updateProxy

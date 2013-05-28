@@ -163,8 +163,10 @@ getServers = (body, cb)->
 
 						if i+1 is $rows.length
 							if cb? and typeof cb is "function"
-								cb()
-								window.close()
+								setTimeout ()->
+									cb()
+									window.close()
+								, 500
 
 class Options
 	constructor: (@path, postData)->
