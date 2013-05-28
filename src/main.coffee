@@ -9,7 +9,8 @@ for prop of colors
 
 process.on 'uncaughtException', (err)->
 	console.error red + "Uncaught error!!! \t" + new Date()
-	console.error err.stack + reset
+	console.error err.stack
+	console.error reset
 
 
 http               = require 'http'
@@ -26,6 +27,7 @@ lastChange         = null
 currentProxy       = null
 proxyServerStarted = false
 forwardServer      = null
+connResetCounter   = 0
 
 mongoose.connect 'mongodb://localhost/ipchanger'
 
@@ -250,7 +252,6 @@ startProxyServer = ()->
 			console.error new Date()
 			console.error e
 			console.error reset
-			proxySocket.end()
 
 		proxySocket.on 'error', (e)->
 			if e.code is "ECONNREFUSED"
@@ -259,20 +260,28 @@ startProxyServer = ()->
 					changing = true
 					updateProxy()
 			
+			if e.code is "ECONNRESET"
+				connResetCounter++
+				if connResetCounter >= 3
+					if !changing
+						changing = true
+						updateProxy()	
+
 			console.error red + "proxy socket error"
 			console.error new Date()
 			console.error e
 			console.error reset
-			clientSocket.end()
 
 		proxySocket.on 'data', (data)->
 			clientSocket.write data
 
+		###
 		proxySocket.on 'end', ()->
 			clientSocket.end()
 
 		clientSocket.on 'end', ()->
 			clientSocket.end()
+		###
 
 		clientSocket.on 'data', (data)->
 			if connected
