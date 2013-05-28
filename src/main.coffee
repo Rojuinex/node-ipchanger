@@ -236,6 +236,8 @@ startProxyServer = ()->
 		buffers = new Array()
 		proxySocket = new net.Socket()
 
+		console.log "Connection recieved from client"
+
 		proxySocket.connect currentProxy.port, currentProxy.ipaddress, ()->
 			connected = true
 			changing = false
@@ -244,7 +246,7 @@ startProxyServer = ()->
 					proxySocket.write buffer
 
 		clientSocket.on 'error', (e)->
-			console.error red + "client socekt error"
+			console.error red + "client socket error"
 			console.error new Date()
 			console.error e
 			console.error reset
