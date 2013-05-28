@@ -163,6 +163,7 @@ startServer = ()->
 		proxySocket = new net.Socket()
 
 		connect = ()->
+			proxySocket = new net.Socket()
 			proxySocket.connect currentProxy.port, currentProxy.ipaddress, ()->
 				connected = true
 				if buffers.length > 0
@@ -179,6 +180,7 @@ startServer = ()->
 			proxySocket.end()
 
 		proxySocket.on 'error', (e)->
+			logX bgRed + ltYellow, e.code
 			if e.code is "ECONNREFUSED"
 				console.log red + "Connection Refused... trying new server"
 				console.error e
