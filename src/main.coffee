@@ -233,16 +233,17 @@ startProxyServer = ()->
 	logX bgGreen + black, "\t\t\t\t\t#{new Date()}\t\t\t\t\t\t"
 	proxyServerStarted = true
 	forwardServer = net.createServer (clientSocket)->
-		connected = false
-		changing = false
-		buffers = new Array()
+		connected   = false
+		changing    = false
+		endClient   = false
+		buffers     = new Array()
 		proxySocket = new net.Socket()
 
 		console.log "Connection recieved from client"
 
 		proxySocket.connect currentProxy.port, currentProxy.ipaddress, ()->
 			connected = true
-			changing = false
+			changing  = false
 			if buffers.length > 0
 				for buffer in buffers
 					proxySocket.write buffer
@@ -259,14 +260,26 @@ startProxyServer = ()->
 				if !changing
 					changing = true
 					updateProxy()
+
+				endClient = true
 			
-			if e.code is "ECONNRESET"
+			else if e.code is "ECONNRESET"
+				connected = false
 				connResetCounter++
-				if connResetCounter >= 3
+				if connResetCounter >= 10
 					connResetCounter = 0
 					if !changing
 						changing = true
 						updateProxy()	
+				else
+					proxySocket.connect currentProxy.port, currentProxy.ipaddress, ()->
+						connected = true
+						changing  = false
+						if buffers.length > 0
+							for buffer in buffers
+								proxySocket.write buffer
+			else
+				endClient = true
 
 			console.error red + "proxy socket error"
 			console.error new Date()
@@ -276,25 +289,17 @@ startProxyServer = ()->
 		proxySocket.on 'data', (data)->
 			clientSocket.write data
 
-		###
-		proxySocket.on 'end', ()->
-			clientSocket.end()
-
-		clientSocket.on 'end', ()->
-			clientSocket.end()
-		###
-
 		clientSocket.on 'data', (data)->
+			buffers[buffers.length] = data
 			if connected
 				proxySocket.write data
-			else
-				buffers[buffers.length] = data
 
 		clientSocket.on 'close', (did_error)->
 			proxySocket.end()
 
 		proxySocket.on 'close', (did_error)->
-			clientSocket.end()
+			if endClient
+				clientSocket.end()
 	# End of proxy connection handler
 
 
