@@ -8,7 +8,7 @@ for prop of colors
 	eval prop + ' = colors[prop]'
 
 process.on 'uncaughtException', (err)->
-	console.error red + "" + new Date()
+	console.error red + "Uncaught error!!! \t" + new Date()
 	console.error err.stack + reset
 
 
@@ -25,6 +25,7 @@ util               = require 'util'
 lastChange         = null
 currentProxy       = null
 proxyServerStarted = false
+forwardServer      = null
 
 mongoose.connect 'mongodb://localhost/ipchanger'
 
@@ -223,7 +224,6 @@ startServer = ()->
 	logX bgGreen + black, "\t\t\t\t\t#{new Date()}\t\t\t\t\t\t"
 	logX ltGreen, "Web server running on port #{config['http-port']}\n"
 	httpServer.listen config['http-port']
-
 
 
 startProxyServer = ()->
