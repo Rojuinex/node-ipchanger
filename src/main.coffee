@@ -159,6 +159,7 @@ startServer = ()->
 
 	forwardServer = net.createServer (clientSocket)->
 		connected = false
+		changing = false
 		buffers = new Array()
 		proxySocket = new net.Socket()
 
@@ -166,6 +167,7 @@ startServer = ()->
 			proxySocket = new net.Socket()
 			proxySocket.connect currentProxy.port, currentProxy.ipaddress, ()->
 				connected = true
+				changing = false
 				if buffers.length > 0
 					for buffer in buffers
 						proxySocket.write buffer
@@ -185,7 +187,9 @@ startServer = ()->
 				console.log red + "Connection Refused... trying new server"
 				console.error e
 				console.log reset
-				updateProxy connect()
+				if !changing
+					changing = true
+					updateProxy connect()
 			else
 				console.log red + "proxy socket error"
 				console.error e
