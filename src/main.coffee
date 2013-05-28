@@ -133,8 +133,8 @@ updateProxy = ()->
 					return
 				else
 					logX blue, "server #{server.ipaddress}:#{server.port} disqualified because" if config.loglevel.verbose
-					logX(blue, "\tLast Duration (#{server['last-duration']}) > Max Time (#{config['max-time']})") if server["last-duration"] > config['max-time'] and config.loglevel.verbose
-					logX(blue, "\tLast Used (#{server['last-used'].getTime()}) > Now (#{Date.now()}) - reset time (#{config['reset-time']})") if server["last-used"].getTime() > Date.now() - config['reset-time'] and config.loglevel.verbose
+					logX(blue, "\tLast Duration (#{server['last-duration']}) > Max Time (#{config['max-time']})") if server["last-duration"] >= config['max-time'] and config.loglevel.verbose
+					logX(blue, "\tLast Used (#{server['last-used'].getTime()}) > Now (#{Date.now()}) - reset time (#{config['reset-time']})") if server["last-used"].getTime() >= Date.now() - config['reset-time'] and config.loglevel.verbose
 					console.log ""
 
 	if currentProxy != null and lastChange != null
