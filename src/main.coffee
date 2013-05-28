@@ -113,7 +113,7 @@ updateProxy = ()->
 	ProxyServer.find().sort("speed").exec (err, servers)->
 		logX red, err if err
 		for server in servers
-
+			logX blue, "trying server #{_i}"
 			if server["last-durration"] < config['max-time'] or server["last-used"].getTime() < Date.now() - config['reset-time']
 				# TODO: Check to see if the proxy server is up
 				
@@ -191,7 +191,7 @@ startServer = ()->
 		logX bgGreen + black, "Forward server bound on port " + config['proxy-port']
 
 	setInterval ()->
-		logX ltRed, "rotating"
+		logX red, "rotating"
 		updateProxy()
 	, config['rotateInterval']
 # End of function start server
