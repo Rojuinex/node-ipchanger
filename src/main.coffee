@@ -104,12 +104,12 @@ updateProxy = ()->
 				server['last-duration'] = config['max-time']
 				server['last-used'] = Date.now()
 				server.save (err)->
-					console.error red + err + reset if err
+					console.error red "Save error " + err + reset if err
 				logX ltYellow, "Server #{server.ipaddress}:#{server.port} not active!"
 				if !connected and !foundProxy
 					cb false
 			else
-				console.error red + " " + e.stack + reset
+				console.error red + "Check Proxy error " + e.stack + reset
 
 		proxySocket.on 'connect', ()->
 			logX blue, "connected to proxy #{server.ipaddress}:#{server.port}" if config.loglevel.verbose
