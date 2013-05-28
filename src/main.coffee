@@ -63,8 +63,8 @@ setupGrabbers = ()->
 	hideMyAssGrabber.setup ProxyServer, db, mongoose
 	# One hour (1000 ms in one sec, 60 sec in one min, 60 min in one hour)
 	#                                 ms to hr constant * hours
-	hideMyAssGrabber.setUpdateInterval( config.updateInterval )
-	hideMyAssGrabber.autoUpdate true
+	#hideMyAssGrabber.setUpdateInterval( config.updateInterval )
+	#hideMyAssGrabber.autoUpdate true
 	hideMyAssGrabber.update()
 
 
@@ -209,6 +209,6 @@ startServer = ()->
 		logX bgGreen + black, "Forward server bound on port " + config['proxy-port']
 
 	setInterval ()->
-		updateProxy()
+		hideMyAssGrabber.update updateProxy
 	, config['rotateInterval']
 # End of function start server

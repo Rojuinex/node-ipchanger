@@ -60,114 +60,111 @@ exports.autoUpdate = (turnOn)->
 			clearInterval autoUpdateHandle
 			autoUpdateHandle = null
 
-scrapeResponse = (window)->
-	updatedTime = new Date()
-	$ = window.$
-
-	console.log strX yellow, "Scraping data. Hold tight."
-	$('.connection_time,.response_time').each (s)->
-		$(this).text $(this).attr('rel')
-
-	$('head').remove()
-	#$('body').html $('<div>').append($('table#listtable').clone()).html()
-
-	$table = $('table#listtable')
-
-
-	console.log strX yellow, 'Removing bad elements...'
-
-	startTime = Date.now()
-	$('div,span').filter ()->
-		return $(this).css('display') == 'none'
-	.remove()
-	
-	endTime = Date.now()
-	console.log strX(grey, "\tTime to remove ") + strX( ltYellow , ((endTime  - startTime)/1000) ) + strX(grey, " seconds")
-
-	console.log strX yellow, 'Removing Style'
-	$('style').remove()
-
-
-	$thead = $table.find 'thead'
-	$rows = $('table#listtable>tr')
-	
-	console.log strX yellow, 'Parsing rows'
-
-	$rows.each (i)->
-		$row = $(this)
-
-		$dataCells = $row.children 'td'
-	
-		serverTemplate = [ 
-			"lastUpdate",
-			"ipaddress",
-			"port",
-			"country",
-			"speed",
-			"connectionTime",
-			"type",
-			"annon"
-		]
-
-		$dataCells.each (j)->
-			$cell = $(this)
-
-			#if /[0-9a-bA-B].+/.test($cell.text())
-			attr = $.trim($cell.text())
-
-			serverTemplate[j] = attr
-
-			if j+1 is $dataCells.length 
-
-				ProxyServer.findOne {
-					ipaddress: serverTemplate[1], 
-					port: serverTemplate[2]
-				}, (err, server)->
-
-					return console.log strX red, err if err
-
-					if server?
-						server['Last-Update']    = serverTemplate[0]
-						server['ipaddress']      = serverTemplate[1]
-						server['port']           = serverTemplate[2]
-						server['country']        = serverTemplate[3]
-						server['speed']          = serverTemplate[4]
-						server['connectionTime'] = serverTemplate[5]
-						server['type']           = serverTemplate[6]
-						server['annon']          = serverTemplate[7]
-						server.save (err)->
-							return console.log strX red, err if err
-							console.log strX ltGreen, "Updating server #{server['ipaddress']}"
-							server.pingServer()
-					else
-						server = new ProxyServer 
-							'Last-Update':serverTemplate[0] 
-							'ipaddress':serverTemplate[1] 
-							'port':serverTemplate[2]
-							'country':serverTemplate[3]
-							'speed':serverTemplate[4]
-							'connectionTime':serverTemplate[5]
-							'from':'hidemyass'
-							'type': serverTemplate[6]
-							'annon': serverTemplate[7]
-
-						server.save (err)->
-							return console.log strX red, err if err
-							console.log strX bgGreen + black, "Adding server #{server['ipaddress']}"
-							server.pingServer()
-
-				if i+1 is $rows.length
-					if cb? and typeof cb is "function"
-						cb()
-						window.close()
-
 
 getServers = (body, cb)->
 	jsdom.env 
 		html: body
 		src: [jquery]
 		done: (errors, window)->
-			scrapeResponse window
+			updatedTime = new Date()
+			$ = window.$
+
+			console.log strX yellow, "Scraping data. Hold tight."
+			$('.connection_time,.response_time').each (s)->
+				$(this).text $(this).attr('rel')
+
+			$('head').remove()
+			#$('body').html $('<div>').append($('table#listtable').clone()).html()
+
+			$table = $('table#listtable')
+
+
+			console.log strX yellow, 'Removing bad elements...'
+
+			startTime = Date.now()
+			$('div,span').filter ()->
+				return $(this).css('display') == 'none'
+			.remove()
+			
+			endTime = Date.now()
+			console.log strX(grey, "\tTime to remove ") + strX( ltYellow , ((endTime  - startTime)/1000) ) + strX(grey, " seconds")
+
+			console.log strX yellow, 'Removing Style'
+			$('style').remove()
+
+
+			$thead = $table.find 'thead'
+			$rows = $('table#listtable>tr')
+			
+			console.log strX yellow, 'Parsing rows'
+
+			$rows.each (i)->
+				$row = $(this)
+
+				$dataCells = $row.children 'td'
+			
+				serverTemplate = [ 
+					"lastUpdate",
+					"ipaddress",
+					"port",
+					"country",
+					"speed",
+					"connectionTime",
+					"type",
+					"annon"
+				]
+
+				$dataCells.each (j)->
+					$cell = $(this)
+
+					#if /[0-9a-bA-B].+/.test($cell.text())
+					attr = $.trim($cell.text())
+
+					serverTemplate[j] = attr
+
+					if j+1 is $dataCells.length 
+
+						ProxyServer.findOne {
+							ipaddress: serverTemplate[1], 
+							port: serverTemplate[2]
+						}, (err, server)->
+
+							return console.log strX red, err if err
+
+							if server?
+								server['Last-Update']    = serverTemplate[0]
+								server['ipaddress']      = serverTemplate[1]
+								server['port']           = serverTemplate[2]
+								server['country']        = serverTemplate[3]
+								server['speed']          = serverTemplate[4]
+								server['connectionTime'] = serverTemplate[5]
+								server['type']           = serverTemplate[6]
+								server['annon']          = serverTemplate[7]
+								server.save (err)->
+									return console.log strX red, err if err
+									console.log strX ltGreen, "Updating server #{server['ipaddress']}"
+									server.pingServer()
+							else
+								server = new ProxyServer 
+									'Last-Update':serverTemplate[0] 
+									'ipaddress':serverTemplate[1] 
+									'port':serverTemplate[2]
+									'country':serverTemplate[3]
+									'speed':serverTemplate[4]
+									'connectionTime':serverTemplate[5]
+									'from':'hidemyass'
+									'type': serverTemplate[6]
+									'annon': serverTemplate[7]
+
+								server.save (err)->
+									return console.log strX red, err if err
+									console.log strX bgGreen + black, "Adding server #{server['ipaddress']}"
+									server.pingServer()
+
+						if i+1 is $rows.length
+							if cb? and typeof cb is "function"
+								cb()
+								window.close()
 
 class Options
 	constructor: (@path, postData)->
