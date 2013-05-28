@@ -107,7 +107,7 @@ server = http.createServer (req,res)->
 				if _i is _len
 					res.end "****************************************\n          No More Proxy Servers\n****************************************\n"
 
-updateProxy = ()->
+updateProxy = (cb)->
 	findNext = ()->
 		ProxyServer.find().sort("speed").exec (err, servers)->
 			logX red, err if err
@@ -129,6 +129,8 @@ updateProxy = ()->
 					lastChange = new Date()
 					currentProxy = server
 
+					if cb != null and typeof cb is "function"
+						cb()
 					return
 				else
 					logX blue, "server #{server.ipaddress}:#{server.port} disqualified because" if config.loglevel.verbose
@@ -160,13 +162,15 @@ startServer = ()->
 		buffers = new Array()
 		proxySocket = new net.Socket()
 
+		connect = ()->
+			proxySocket.connect currentProxy.port, currentProxy.ipaddress, ()->
+				connected = true
+				if buffers.length > 0
+					for buffer in buffers
+						proxySocket.write buffer
 
-		proxySocket.connect currentProxy.port, currentProxy.ipaddress, ()->
-			connected = true
+		connect()
 
-			if buffers.length > 0
-				for buffer in buffers
-					proxySocket.write buffer
 
 		clientSocket.on 'error', (e)->
 			console.log red + "client socekt error"
@@ -176,11 +180,15 @@ startServer = ()->
 
 		proxySocket.on 'error', (e)->
 			if e.code is "ECONNREFUSED"
-				updateProxy()
-			console.log red + "proxy socket error"
-			console.error e
-			console.log reset
-			clientSocket.end()
+				console.log red + "Connection Refused... trying new server"
+				console.error e
+				console.log reset
+				updateProxy connect()
+			else
+				console.log red + "proxy socket error"
+				console.error e
+				console.log reset
+				clientSocket.end()
 
 		proxySocket.on 'data', (data)->
 			clientSocket.write data
@@ -192,11 +200,9 @@ startServer = ()->
 			clientSocket.end()
 
 		clientSocket.on 'data', (data)->
+			buffers[buffers.length] = data
 			if connected
 				proxySocket.write data
-			else
-				buffers[buffers.length] = data
-
 
 		clientSocket.on 'close', (did_error)->
 			proxySocket.end()
