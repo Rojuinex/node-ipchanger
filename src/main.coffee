@@ -8,7 +8,6 @@ for prop of colors
 	eval prop + ' = colors[prop]'
 
 http             = require 'http'
-httpProxy        = require 'http-proxy'
 qs               = require 'querystring'
 jsdom            = require 'jsdom'
 util             = require 'util'
