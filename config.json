@@ -1,0 +1,8 @@
+{ 
+	"updateInterval" : 21600000,
+	"http-port": 8088,
+	"rotateInterval": 3600000,
+	"proxy-port": 8089,
+	"max-time": 3600000,
+	"reset-time": 86400000
+}
