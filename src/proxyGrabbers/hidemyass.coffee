@@ -12,8 +12,7 @@ qs      = require 'querystring'
 fs      = require 'fs'
 jsdom   = require 'jsdom'
 jquery  = fs.readFileSync(__dirname + '/../jquery2.0.1.js').toString()
-cheerio = require 'cheerio'
-select  = require('soupselect').select
+
 
 ProxyServer = null
 db          = null

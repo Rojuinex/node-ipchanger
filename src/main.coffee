@@ -45,8 +45,8 @@ setupDatabase = (cb)->
 		'annon':String
 		'last-used': 
 			'type': Date
-			'default': new Date()
-		'last-durration': 
+			'default': 0
+		'last-duration': 
 			'type': Number
 			'default': 0
 	})
@@ -103,32 +103,51 @@ server = http.createServer (req,res)->
 				res.write '\n\t' + 'type            ' + server['type']
 				res.write '\n\t' + 'annon           ' + server['annon']
 				res.write '\n\t' + 'last-used       ' + server['last-used']
-				res.write '\n\t' + 'last-durration  ' + server['last-durration'] 
+				res.write '\n\t' + 'last-duration  ' + server['last-duration'] 
 
 				if _i is _len
 					res.end "****************************************\n          No More Proxy Servers\n****************************************\n"
 
 updateProxy = ()->
+	findNext = ()->
+		ProxyServer.find().sort("speed").exec (err, servers)->
+			logX red, err if err
+			if servers is null or servers.length <= 0
+				setTimeout(findNext, 1000)
 
-	ProxyServer.find().sort("speed").exec (err, servers)->
-		logX red, err if err
-		for server in servers
-			logX blue, "trying server #{_i}"
-			if server["last-durration"] < config['max-time'] or server["last-used"].getTime() < Date.now() - config['reset-time']
-				# TODO: Check to see if the proxy server is up
-				
-				logX ltYellow, "Now using proxy server #{server.ipaddress} on port #{server.port} with speed #{server.speed}!"
-				
-				if currentProxy != null and lastChange != null
-					currentProxy["last-used"] = lastChange
-					currentProxy["last-durration"] = Date.now() - lastChange.getTime()
-					currentProxy.save (err)->
-						console.error err if err
+			for server in servers
+				if currentProxy != null and server.ipaddress is currentProxy.ipaddress
+					continue
 
-				lastChange = new Date()
-				currentProxy = server
+				logX blue, "\ntrying server #{server.ipaddress}:#{server.port}" if config.loglevel.verbose
+				if server["last-duration"] < config['max-time'] or server["last-used"].getTime() < Date.now() - config['reset-time']
+					# TODO: Check to see if the proxy server is up
+					
+					logX ltYellow, "Now using proxy server #{server.ipaddress} on port #{server.port} with speed #{server.speed}!"
+					logX blue, "Selected because last duration " + (server["last-duration"] < config['max-time']) + " Reset Time passed " + (server["last-used"].getTime() < Date.now() - config['reset-time']) if config.loglevel.verbose
+					logX blue, "\tLast Duration #{server['last-duration']}\n\tLast Used #{server["last-used"].getTime()}"
 
-				return
+					lastChange = new Date()
+					currentProxy = server
+
+					return
+				else
+					logX blue, "server #{server.ipaddress}:#{server.port} disqualified because" if config.loglevel.verbose
+					logX(blue, "\tLast Duration (#{server['last-duration']}) > Max Time (#{config['max-time']})") if server["last-duration"] > config['max-time'] and config.loglevel.verbose
+					logX(blue, "\tLast Used (#{server['last-used'].getTime()}) > Now (#{Date.now()}) - reset time (#{config['reset-time']})") if server["last-used"].getTime() > Date.now() - config['reset-time'] and config.loglevel.verbose
+					console.log ""
+
+	if currentProxy != null and lastChange != null
+		currentProxy["last-used"] = lastChange
+		# real metod... may need to substute for always max here... rounding maybe?
+		#currentProxy["last-duration"] = Date.now() - lastChange.getTime() + 5000
+		currentProxy["last-duration"] = config["max-time"]
+		currentProxy.save (err)->
+			console.error err if err
+			logX(blue,"Saved #{currentProxy.ipaddress} ") if config.loglevel.verbose
+			findNext()
+	else
+		findNext()
 
 
 startServer = ()->
@@ -144,7 +163,6 @@ startServer = ()->
 
 
 		proxySocket.connect currentProxy.port, currentProxy.ipaddress, ()->
-			logX ltYellow, "Connected to proxy 108.41.35.10 21858"
 			connected = true
 
 			if buffers.length > 0
@@ -191,7 +209,6 @@ startServer = ()->
 		logX bgGreen + black, "Forward server bound on port " + config['proxy-port']
 
 	setInterval ()->
-		logX red, "rotating"
 		updateProxy()
 	, config['rotateInterval']
 # End of function start server
