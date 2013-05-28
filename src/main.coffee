@@ -263,6 +263,7 @@ startProxyServer = ()->
 			if e.code is "ECONNRESET"
 				connResetCounter++
 				if connResetCounter >= 3
+					connResetCounter = 0
 					if !changing
 						changing = true
 						updateProxy()	
