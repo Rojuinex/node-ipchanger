@@ -175,6 +175,8 @@ startServer = ()->
 			proxySocket.end()
 
 		proxySocket.on 'error', (e)->
+			if e.code is "ECONNREFUSED"
+				updateProxy()
 			console.log red + "proxy socket error"
 			console.error e
 			console.log reset
