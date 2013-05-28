@@ -7,6 +7,10 @@ for prop of colors
 	#@[prop] = colors[prop]
 	eval prop + ' = colors[prop]'
 
+process.on 'uncaughtException', (err)->
+	logX red, err
+
+
 http             = require 'http'
 qs               = require 'querystring'
 jsdom            = require 'jsdom'
