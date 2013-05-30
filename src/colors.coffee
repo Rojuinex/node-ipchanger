@@ -6,6 +6,7 @@ Date Created: December 30th, 2012
 ###
 
 # Codes for working with text in the console.
+addTimeStamp      = true
 strcode           = "\u001b["
 exports.reset     = "#{strcode}0m"
 exports.bold      = "#{strcode}1m"
@@ -42,9 +43,23 @@ exports.ltMagenta = "#{strcode}95m"
 exports.ltCyan    = "#{strcode}96m"
 exports.ltWhite   = "#{strcode}97m"
 
+timeStamp = (string)->
+	parseString = string.replace /\n/, "\n                                       \t\t"
+	timeString = "#{new Date()}\t\t" + parseString
 
 exports.strX    = (format, string)->
 	return format + string + reset
 
 exports.logX    = (format, string)->
-	console.log strX(format, string)
+	logString = strX(format, string)
+	if addTimeStamp
+		logString = timeStamp logString
+
+	console.log logString
+
+exports.errorX = (format, string)->
+	logString = strX(format, string)
+	if addTimeStamp
+		logString = timeStamp logString
+
+	console.error logString

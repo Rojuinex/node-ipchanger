@@ -8,9 +8,8 @@ for prop of colors
 	eval prop + ' = colors[prop]'
 
 process.on 'uncaughtException', (err)->
-	console.error red + "Uncaught error!!! \t" + new Date()
-	console.error err.stack
-	console.error reset
+	errorX red, "Uncaught error!!!"
+	errorX red, err.stack
 
 
 http               = require 'http'
@@ -73,7 +72,8 @@ setupGrabbers = ()->
 	#                                 ms to hr constant * hours
 	#hideMyAssGrabber.setUpdateInterval( config.updateInterval )
 	#hideMyAssGrabber.autoUpdate true
-	hideMyAssGrabber.update updateProxy
+	hideMyAssGrabber.update ()->
+		setTimeout updateProxy, 1000
 
 
 db.once 'open', ()->
@@ -89,7 +89,7 @@ updateProxy = ()->
 	updating = true
 	foundProxy = false
 
-	logX bgBlue + ltYellow, "Updating proxy...\t" + new Date()
+	logX bgBlue + ltYellow, "Updating proxy..."
 
 	checkProxy = (server,cb)->
 		timeOutFunction = null
@@ -104,12 +104,12 @@ updateProxy = ()->
 				server['last-duration'] = config['max-time']
 				server['last-used'] = Date.now()
 				server.save (err)->
-					console.error red "Save error " + err + reset if err
+					errorX red, "Save error " + err if err
 				logX ltYellow, "Server #{server.ipaddress}:#{server.port} not active!"
 				if !connected and !foundProxy
 					cb false
 			else
-				console.error red + "Check Proxy error " + e.stack + reset
+				errorX red, "Check Proxy error " + e.stack
 
 		proxySocket.on 'connect', ()->
 			logX blue, "connected to proxy #{server.ipaddress}:#{server.port}" if config.loglevel.verbose
@@ -138,16 +138,20 @@ updateProxy = ()->
 
 		if currentProxy != null and server.ipaddress is currentProxy.ipaddress
 			return findNext servers, index
-
-		logX blue, "\ntrying server #{server.ipaddress}:#{server.port}" if config.loglevel.verbose
+		
+		if config.loglevel.verbose
+			logX blue, "trying server #{server.ipaddress}:#{server.port}" 
+		
 		if server["last-duration"] < config['max-time'] or server["last-used"].getTime() < Date.now() - config['reset-time']
 			# TODO: Check to see if the proxy server is up
 
 			checkProxy server,(active)->
 				if active
 					logX ltYellow, "Now using proxy server #{server.ipaddress} on port #{server.port} with speed #{server.speed}!"
-					logX blue, "Selected because last duration " + (server["last-duration"] < config['max-time']) + " Reset Time passed " + (server["last-used"].getTime() < Date.now() - config['reset-time']) if config.loglevel.verbose
-					logX blue, "\tLast Duration #{server['last-duration']}\n\tLast Used #{server["last-used"].getTime()}"
+					if config.loglevel.verbose
+						logX blue, "Selected because last duration " + (server["last-duration"] < config['max-time']) + " Reset Time passed " + (server["last-used"].getTime() < Date.now() - config['reset-time'])
+						logX blue, "\tLast Duration #{server['last-duration']}"
+						logX blue, "\tLast Used #{server["last-used"].getTime()}"
 
 					lastChange = new Date()
 					currentProxy = server
@@ -160,9 +164,8 @@ updateProxy = ()->
 
 		else
 			logX blue, "server #{server.ipaddress}:#{server.port} disqualified because" if config.loglevel.verbose
-			logX(blue, "\tLast Duration (#{server['last-duration']}) > Max Time (#{config['max-time']})") if server["last-duration"] >= config['max-time'] and config.loglevel.verbose
-			logX(blue, "\tLast Used (#{server['last-used'].getTime()}) > Now (#{Date.now()}) - reset time (#{config['reset-time']})") if server["last-used"].getTime() >= Date.now() - config['reset-time'] and config.loglevel.verbose
-			console.log ""
+			logX(blue, "\tLast Duration (#{server['last-duration']}) > Max Time (#{config['max-time']})") if (server["last-duration"] >= config['max-time']) and config.loglevel.verbose
+			logX(blue, "\tLast Used (#{server['last-used'].getTime()}) > Now (#{Date.now()}) - reset time (#{config['reset-time']})") if (server["last-used"].getTime() >= Date.now() - config['reset-time']) and config.loglevel.verbose
 			findNext servers
 
 	getServers = ()->
@@ -179,7 +182,7 @@ updateProxy = ()->
 		#currentProxy["last-duration"] = Date.now() - lastChange.getTime() + 5000
 		currentProxy["last-duration"] = config["max-time"]
 		currentProxy.save (err)->
-			console.error err if err
+			errorX err if err
 			getServers()
 	else
 		getServers()
@@ -223,22 +226,21 @@ httpServer = http.createServer (req,res)->
 
 startServer = ()->
 	logX bgGreen + black, "\t\t\t\t\t\tStarting Web Server\t\t\t\t\t\t\t"
-	logX bgGreen + black, "\t\t\t\t\t#{new Date()}\t\t\t\t\t\t"
-	logX ltGreen, "Web server running on port #{config['http-port']}\n"
+	#logX bgGreen + black, "\t\t\t\t\t#{new Date()}\t\t\t\t\t\t"
+	logX ltGreen, "Web server running on port #{config['http-port']}"
 	httpServer.listen config['http-port']
 
 
 startProxyServer = ()->
 	logX bgGreen + black, "\t\t\t\t\t\tStarting Proxy Server\t\t\t\t\t\t\t"
-	logX bgGreen + black, "\t\t\t\t\t#{new Date()}\t\t\t\t\t\t"
+	#logX bgGreen + black, "\t\t\t\t\t#{new Date()}\t\t\t\t\t\t"
 	proxyServerStarted = true
 	forwardServer = net.createServer (clientSocket)->
 		connected   = false
 		changing    = false
+		closed      = false
 		buffers     = new Array()
 		proxySocket = new net.Socket()
-
-		console.log "Connection recieved from client"
 
 		proxySocket.connect currentProxy.port, currentProxy.ipaddress, ()->
 			connected = true
@@ -248,10 +250,8 @@ startProxyServer = ()->
 					proxySocket.write buffer
 
 		clientSocket.on 'error', (e)->
-			console.error red + "client socket error"
-			console.error new Date()
-			console.error e
-			console.error reset
+			errorX red, "client socket error"
+			errorX red, e
 
 		proxySocket.on 'error', (e)->
 			if e.code is "ECONNREFUSED"
@@ -277,23 +277,22 @@ startProxyServer = ()->
 								proxySocket.write buffer
 			###
 
-			console.error red + "proxy socket error"
-			console.error new Date()
-			console.error e
-			console.error reset
+			errorX red, "proxy socket error"
+			errorX red, e
 
 		proxySocket.on 'data', (data)->
 			clientSocket.write data
 
 		clientSocket.on 'data', (data)->
 			buffers[buffers.length] = data
-			if connected
+			if connected and !closed
 				proxySocket.write data
 
 		clientSocket.on 'close', (did_error)->
 			proxySocket.end()
 
 		proxySocket.on 'close', (did_error)->
+			closed = true
 			clientSocket.end()
 	# End of proxy connection handler
 

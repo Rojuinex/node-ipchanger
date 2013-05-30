@@ -69,7 +69,7 @@ getServers = (body, cb)->
 			updatedTime = new Date()
 			$ = window.$
 
-			console.log strX yellow, "Scraping data. Hold tight."
+			logX yellow, "Scraping data. Hold tight."
 			$('.connection_time,.response_time').each (s)->
 				$(this).text $(this).attr('rel')
 
@@ -79,7 +79,7 @@ getServers = (body, cb)->
 			$table = $('table#listtable')
 
 
-			console.log strX yellow, 'Removing bad elements...'
+			logX yellow, 'Removing bad elements...'
 
 			startTime = Date.now()
 			$('div,span').filter ()->
@@ -87,16 +87,16 @@ getServers = (body, cb)->
 			.remove()
 			
 			endTime = Date.now()
-			console.log strX(grey, "\tTime to remove ") + strX( ltYellow , ((endTime  - startTime)/1000) ) + strX(grey, " seconds")
+			logX "", strX(grey, "\tTime to remove ") + strX( ltYellow , ((endTime  - startTime)/1000) ) + strX(grey, " seconds")
 
-			console.log strX yellow, 'Removing Style'
+			logX yellow, 'Removing Style'
 			$('style').remove()
 
 
 			$thead = $table.find 'thead'
 			$rows = $('table#listtable>tr')
 			
-			console.log strX yellow, 'Parsing rows'
+			logX yellow, 'Parsing rows'
 
 			$rows.each (i)->
 				$row = $(this)
@@ -129,7 +129,7 @@ getServers = (body, cb)->
 							port: serverTemplate[2]
 						}, (err, server)->
 
-							return console.log strX red, err if err
+							return logX red, err if err
 
 							if server?
 								server['Last-Update']    = serverTemplate[0]
@@ -141,8 +141,8 @@ getServers = (body, cb)->
 								server['type']           = serverTemplate[6]
 								server['annon']          = serverTemplate[7]
 								server.save (err)->
-									return console.log strX red, err if err
-									console.log strX ltGreen, "Updating server #{server['ipaddress']}"
+									return logX red, err if err
+									logX ltGreen, "Updating server #{server['ipaddress']}"
 									server.pingServer()
 							else
 								server = new ProxyServer 
@@ -157,16 +157,15 @@ getServers = (body, cb)->
 									'annon': serverTemplate[7]
 
 								server.save (err)->
-									return console.log strX red, err if err
-									console.log strX bgGreen + black, "Adding server #{server['ipaddress']}"
+									return logX red, err if err
+									logX bgGreen + black, "Adding server #{server['ipaddress']}"
 									server.pingServer()
 
 						if i+1 is $rows.length
+							window.close()
 							if cb? and typeof cb is "function"
-								setTimeout ()->
-									cb()
-									window.close()
-								, 500
+								cb()
+							
 
 class Options
 	constructor: (@path, postData)->
@@ -222,10 +221,10 @@ searchOptions = qs.stringify
 	# End of Post Body Options
 
 exports.update = update = (cb)->
-	console.log strX yellow, "Grabing info from Hide My Ass..."
+	logX yellow, "Grabing info from Hide My Ass..."
 	options = new Options "/proxy-list/", searchOptions
 
-	console.log strX yellow, "\tSending first request"
+	logX yellow, "\tSending first request"
 	req = http.request options, (res)->
 		body = ''
 
@@ -233,13 +232,14 @@ exports.update = update = (cb)->
 			body += data
 
 		res.on 'end', ()->
-			console.log strX yellow, "\tFirst response recieved\n\tSending second request"
+			logX yellow, "\tFirst response recieved"
+			logX yellow, "\tSending second request"
 			postData2 = "q=378"
 
 			options2 = new Options res.headers['location'], postData2
 
 			if res.statusCode != 200 and res.statusCode != 302
-				console.log strX red, "\tFirst Status code was " + res.statusCode
+				logX red, "\tFirst Status code was " + res.statusCode
 				return
 
 			req2 = http.request options2, (res2)->
@@ -249,19 +249,19 @@ exports.update = update = (cb)->
 					body2 += data
 
 				res2.on 'end', ()->
-					console.log strX yellow, "\tSecond response recieved"
+					logX yellow, "\tSecond response recieved"
 					if res2.statusCode != 200
-						console.log strX red, "\tSecond Status code was " + res2.statusCode
+						logX red, "\tSecond Status code was " + res2.statusCode
 						return update()
 
 					getServers body2, cb
 
 			req2.on 'error', (e)->
-				console.log strX red, 'Problem with second request: ' + e.message
+				logX red, 'Problem with second request: ' + e.message
 
 			req2.end postData2
 
 	req.on 'error', (e)->
-		console.log strX red, 'Problem with first request: ' + e.message
+		logX red, 'Problem with first request: ' + e.message
 
 	req.end searchOptions
