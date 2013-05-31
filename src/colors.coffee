@@ -45,7 +45,10 @@ exports.ltWhite   = "#{strcode}97m"
 exports.none      = ""
 
 timeStamp = (string)->
-	parseString = string.replace /\n/, "\n                                       \t\t"
+	parseString = string.replace "\r\n", "\n"
+	parseString = parseString.replace "\n\r", "\n"
+	parseString = parseString.replace "\r", "\n"
+	parseString = parseString.replace /\n/, "\n                                       \t\t"
 	timeString = "#{new Date()}\t\t" + parseString
 
 exports.strX    = (format, string)->
@@ -59,6 +62,8 @@ exports.logX    = (format, string)->
 	console.log logString
 
 exports.errorX = (format, string)->
+	console.log 
+
 	logString = strX(format, string)
 	if addTimeStamp
 		logString = timeStamp logString

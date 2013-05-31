@@ -6,6 +6,6 @@
 	"max-time": 3600000,
 	"reset-time": 86400000,
 	"loglevel": {
-		"verbose": true
+		"verbose": false
 	}
 }

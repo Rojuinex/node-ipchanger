@@ -1,3 +1,10 @@
+Array.prototype.in = (item)->
+	for val in this
+		if val is item
+			return true
+		if _i + 1 is _len
+			return false
+
 # Nifty method for working with console text
 colors = require './colors'
 
@@ -19,6 +26,7 @@ util               = require 'util'
 mongoose           = require 'mongoose' 
 hideMyAssGrabber   = require './proxyGrabbers/hidemyass'
 config             = require '../config.json'
+blacklist          = require '../blacklist.json'
 net                = require 'net'
 util               = require 'util'
 portscanner        = require 'portscanner'
@@ -151,6 +159,11 @@ updateProxy = ()->
 		if currentProxy != null and server.ipaddress is currentProxy.ipaddress
 			return findNext servers, index
 		
+		if blacklist.in(server.ipaddress)
+			logX bgRed + black, "Server "+server.ipaddress + " is blacklisted!"
+			return findNext servers,index
+
+
 		if config.loglevel.verbose
 			logX cyan, "trying server #{server.ipaddress}:#{server.port}" 
 		
