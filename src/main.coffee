@@ -21,6 +21,7 @@ hideMyAssGrabber   = require './proxyGrabbers/hidemyass'
 config             = require '../config.json'
 net                = require 'net'
 util               = require 'util'
+portscanner        = require 'portscanner'
 
 lastChange         = null
 currentProxy       = null
@@ -91,6 +92,17 @@ updateProxy = ()->
 
 	logX bgBlue + ltYellow, "Updating proxy..."
 
+	checkPort = (server, cb)->
+		portscanner.checkPortStatus server.port, server.ipaddress, (error, status)->
+			errorX red, error if error
+
+			logX cyan, "Status of #{server.ipaddress}:#{server.port} is #{status}" if config.loglevel.verbose
+
+			if cb? and typeof cb is 'function'
+				cb status
+			else
+				logX cyan, "no callback... Status of #{server.ipaddress}:#{server.port} is #{status}"
+
 	checkProxy = (server,cb)->
 		timeOutFunction = null
 		proxySocket = new net.Socket()
@@ -112,7 +124,7 @@ updateProxy = ()->
 				errorX red, "Check Proxy error " + e.stack
 
 		proxySocket.on 'connect', ()->
-			logX blue, "connected to proxy #{server.ipaddress}:#{server.port}" if config.loglevel.verbose
+			logX cyan, "connected to proxy #{server.ipaddress}:#{server.port}" if config.loglevel.verbose
 			connected = true
 			foundProxy = true
 			cb true
@@ -140,32 +152,37 @@ updateProxy = ()->
 			return findNext servers, index
 		
 		if config.loglevel.verbose
-			logX blue, "trying server #{server.ipaddress}:#{server.port}" 
+			logX cyan, "trying server #{server.ipaddress}:#{server.port}" 
 		
 		if server["last-duration"] < config['max-time'] or server["last-used"].getTime() < Date.now() - config['reset-time']
 			# TODO: Check to see if the proxy server is up
 
-			checkProxy server,(active)->
-				if active
-					logX ltYellow, "Now using proxy server #{server.ipaddress} on port #{server.port} with speed #{server.speed}!"
-					if config.loglevel.verbose
-						logX blue, "Selected because last duration " + (server["last-duration"] < config['max-time']) + " Reset Time passed " + (server["last-used"].getTime() < Date.now() - config['reset-time'])
-						logX blue, "\tLast Duration #{server['last-duration']}"
-						logX blue, "\tLast Used #{server["last-used"].getTime()}"
+			checkPort server, (status) ->
 
-					lastChange = new Date()
-					currentProxy = server
-					updating = false
-					if !proxyServerStarted
-						startProxyServer()
+				if status is 'open'
+					checkProxy server,(active)->
+						if active
+							logX ltYellow, "Now using proxy server #{server.ipaddress} on port #{server.port} with speed #{server.speed}!"
+							if config.loglevel.verbose
+								logX cyan, "Selected because last duration " + (server["last-duration"] < config['max-time']) + " Reset Time passed " + (server["last-used"].getTime() < Date.now() - config['reset-time'])
+								logX cyan, "\tLast Duration #{server['last-duration']}"
+								logX cyan, "\tLast Used #{server["last-used"].getTime()}"
+
+							lastChange = new Date()
+							currentProxy = server
+							updating = false
+							if !proxyServerStarted
+								startProxyServer()
+						else
+							findNext servers
 				else
 					findNext servers
-				
+						
 
 		else
-			logX blue, "server #{server.ipaddress}:#{server.port} disqualified because" if config.loglevel.verbose
-			logX(blue, "\tLast Duration (#{server['last-duration']}) > Max Time (#{config['max-time']})") if (server["last-duration"] >= config['max-time']) and config.loglevel.verbose
-			logX(blue, "\tLast Used (#{server['last-used'].getTime()}) > Now (#{Date.now()}) - reset time (#{config['reset-time']})") if (server["last-used"].getTime() >= Date.now() - config['reset-time']) and config.loglevel.verbose
+			logX cyan, "server #{server.ipaddress}:#{server.port} disqualified because" if config.loglevel.verbose
+			logX(cyan, "\tLast Duration (#{server['last-duration']}) > Max Time (#{config['max-time']})") if (server["last-duration"] >= config['max-time']) and config.loglevel.verbose
+			logX(cyan, "\tLast Used (#{server['last-used'].getTime()}) > Now (#{Date.now()}) - reset time (#{config['reset-time']})") if (server["last-used"].getTime() >= Date.now() - config['reset-time']) and config.loglevel.verbose
 			findNext servers
 
 	getServers = ()->

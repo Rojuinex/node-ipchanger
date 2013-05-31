@@ -42,6 +42,7 @@ exports.ltBlue    = "#{strcode}94m"
 exports.ltMagenta = "#{strcode}95m"
 exports.ltCyan    = "#{strcode}96m"
 exports.ltWhite   = "#{strcode}97m"
+exports.none      = ""
 
 timeStamp = (string)->
 	parseString = string.replace /\n/, "\n                                       \t\t"
