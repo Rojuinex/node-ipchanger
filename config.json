@@ -6,6 +6,11 @@
 	"max-time": 3600000,
 	"reset-time": 86400000,
 	"loglevel": {
-		"verbose": false
+		"verbose": true
+	},
+	"administrator":{
+		"username":"admin",
+		"encryption":"none",
+		"password":"xi3"
 	}
 }

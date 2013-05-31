@@ -21,15 +21,37 @@ process.on 'uncaughtException', (err)->
 
 http               = require 'http'
 qs                 = require 'querystring'
+fs                 = require 'fs'
+
 jsdom              = require 'jsdom'
 util               = require 'util'
 mongoose           = require 'mongoose' 
 hideMyAssGrabber   = require './proxyGrabbers/hidemyass'
-config             = require '../config.json'
-blacklist          = require '../blacklist.json'
+config             = require __dirname + '/../config.json'
+blacklist          = require __dirname + '/../blacklist.json'
 net                = require 'net'
-util               = require 'util'
 portscanner        = require 'portscanner'
+express            = require 'express'
+
+fs.watch __dirname + '/../config.json', {persistent: false, interval: 1000}, (event, filename)->
+	if event is 'change'
+		logX magenta, "Configuration file changed!  Loading changes..."
+		
+		name = require.resolve( __dirname + '/../config.json');
+		delete require.cache[name];
+
+		config = require __dirname + '/../config.json'
+		#logX magenta, "Going down for changes.."
+		#process.exit(0)
+
+fs.watch __dirname + '/../blacklist.json', {persistent: false, interval: 1000}, (event, filename)->
+	if event is 'change'
+		logX magenta, "Blacklist file changed!  Loading changes..."
+
+		name = require.resolve( __dirname + '/../blacklist.json');
+		delete require.cache[name];
+
+		blacklist = require __dirname + '/../blacklist.json'
 
 lastChange         = null
 currentProxy       = null
@@ -88,7 +110,8 @@ setupGrabbers = ()->
 db.once 'open', ()->
 	setupDatabase ()->
 		startServer()
-		setupGrabbers()
+		updateProxy()
+		#setupGrabbers()
 		
 
 
@@ -98,7 +121,7 @@ updateProxy = ()->
 	updating = true
 	foundProxy = false
 
-	logX bgBlue + ltYellow, "Updating proxy..."
+	logX bgBlue + ltYellow, "Updating proxy...                        "
 
 	checkPort = (server, cb)->
 		portscanner.checkPortStatus server.port, server.ipaddress, (error, status)->
@@ -217,8 +240,6 @@ updateProxy = ()->
 	else
 		getServers()
 
-
-
 httpServer = http.createServer (req,res)->
 	req.on 'data', (data)->
 
@@ -334,3 +355,25 @@ startProxyServer = ()->
 		hideMyAssGrabber.update updateProxy
 	, config['rotateInterval']
 # End of function start server
+
+
+
+app = express()
+
+app.set 'view engine', 'jade'
+app.set 'views', __dirname + '/../views'
+
+app.use express.cookieParser 'Cookie4Xi3'
+app.use express.session key:'ipconfig.key'
+
+app.use express.basicAuth (user,pass)->
+	return user is config.administrator.username and pass is config.administrator.password
+
+
+app.get '/', (req,res)->
+	res.render 'index'
+
+app.get '/logout', (req,res)->
+	res.redirect 'http://forget:forget@localhost/'
+
+app.listen 80

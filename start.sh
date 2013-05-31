@@ -1,1 +1,1 @@
-supervisor ./lib/main.js
+sudo supervisor ./lib/main.js

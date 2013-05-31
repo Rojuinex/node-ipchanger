@@ -1,1 +1,1 @@
-coffee --bare -wc -o ./lib ./src
+coffee --bare --watch --compile -o ./ ./src

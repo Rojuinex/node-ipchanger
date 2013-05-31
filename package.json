@@ -9,6 +9,9 @@
 	"dependencies": {
 		"jsdom": "0.6.x",
 		"mongoose": "3.6.x",
-		"portscanner":"0.1.x"
-	}
+		"portscanner":"0.1.x",
+		"express":"3.x",
+		"jade":"0.31.x"
+	},
+	"private":true
 }
